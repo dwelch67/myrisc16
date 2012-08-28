@@ -1,0 +1,18 @@
+
+
+RRR oooaaabbb0000ccc
+RRI oooaaabbbsssssss
+ RI oooaaaiiiiiiiiii
+
+
+FEDCBA9876543210
+000aaabbb0000ccc add ra,rb,rc
+001aaabbbsssssss addi ra,rb,simm
+010aaabbb0000ccc nand ra,rb,rc  ra = ~(rb|rc)
+011aaaiiiiiiiiii lui ra,imm   ra=imm<<6
+100aaabbbsssssss sw ra,[rb+simm]
+101aaabbbsssssss lw ra,[rb+simm]
+110aaabbbsssssss beq ra,rb,simm
+111aaabbb0000000 jalr ra,rb  ra = pc; j rb
+
+
