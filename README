@@ -1,0 +1,363 @@
+
+This is my implementation of the Ridiculously Simple Computer.  The
+instruction set is defined here:
+
+http://www.eng.umd.edu/~blj/RiSC/
+
+I dont know how many times I have said this but I think there is a lot
+that can be taught and learned using this architecture.  Assembly language,
+machine language, instruction set simulator, watching a program run inside
+a processor, whatever else I can think of...
+
+A prerequisite for understanding and using this material is a working
+knowledge of the C programming language.  If you have no programming
+experience at all, that is definitely required, I am not teaching you
+programming concepts, just another language.  Perhaps start with Python
+the Hard Way by Zed A. Shaw, it isnt really hard or the hard way the
+key to it is you are actually learning to program by typing the programs
+in first, then work out the typos and mistakes you made doing it which
+we all do, then when have actually typed it in right, compiled and run
+it to match the output in the book, then you are told what the program
+does and way.  You are spoon fed through a path of learning the basic
+concepts of the language into more complicated things.  Other books
+will lead you along the same path, but they expect you to invent the
+programs yourself.  Learn Python is his well known book but it appears
+he has a Learn C book as well in some state of completion.
+
+http://learncodethehardway.org/
+
+
+Now that you know how to program in C we can move forward.
+
+
+First, some terminology.  Some of these terms have different definitions
+depending on who you are talking to, which can make it difficult at times.
+
+Instruction Set Architecture, sometimes abbreviated ISA, there are other
+things called ISA so dont get this confused.  Also sometimes just called
+instruction set.  It is the set of instructions that a processor knows
+how to execute.  These instructions are also called machine language
+or machine code.  The processor reads bits/bytes from memory, each
+instruction has a specific bit pattern also called an opcode that tells
+the processor what you want it to do.  When you place specific instructions
+in a specific order you can get the processor to do complicated things
+using sequences of simple instructions.
+
+Machine language or machine code.  This is your program, sequences of
+processor instructions, in binary form.  A bunch of bits that are hard
+for humans to read but easy for the processor.
+
+Assembly language.  Assembly language is the programming language that
+you use to create the machine code.  Like other programming languages
+it is text, written using a text editor.  Unlike other programming
+languages though, each instruction set can an often does have a
+different assembly language than some other programming language. ARM
+assembly language although similar in some respects is different from
+x86 assembly languat or mips assembly language, etc.  All three have
+an add instruction for example and the word "add" is in the instruction
+but the syntax can and will vary from one processor family to another.
+Since the machine code is the goal, and assembly language is just a way
+for us to program at this low level in a human readable/writeable form
+it does happen from time to time that an assembly language may change
+or there may be more than one assembly language for an instruction set.
+Usually the company or individual that creates the processor and at
+the same time creates the instruction set which means they define the
+machine code, each instruction, for that processor.  They tend to also
+create the first assembly language definition for that processor.  The
+document used to describe the instruction set will often contain both
+the assembly language, words like and and xor and things like that along
+with register names, etc.  Also it will often contain the bit definitions
+for the machine code.  Some companies are better than others.  Also
+in order to sell these chips they often create or have someone create
+an assembler (see below) for this instruction set.  But, so long as
+you create the right machine code and follow the rules for the processor
+there is no reason why you cant make your own assembly language for
+a particular processor.  x86 is a very well known example, intel created
+the processor.  Microsoft was at first well known for being the assembler
+that most people used, no doubt intel had their own, but I bet it was
+pricy.  Borland also had an assembler, turbo assembler.  Microsofts
+masm and Borlands turbo assembler used very similar syntax but not exact.
+Today the gnu tools dominate, and the gnu folks completely messed up the
+intel x86 assembly language.  This is known as the at&t syntax where the
+classic x86 assembly language is known as intel syntax.  nasm is a
+popular assembler that honors the real intel assembly language where
+gnu as defaults to using at&t.
+
+Assembler.  This word is a bit tricky, I like to try to use this word
+when I am talking about the program that takes assembly language and
+converts it to machine code.  Like a compiler, but the term compiler
+is for programming languages that are higher level, not a one to one
+relationship between the line of code or operation and the machine
+code instruction.  Where the confusion comes is the word assembler is
+also often used when referring to the assembly language itself.  So when
+you hear folks say, you might have to look at the assembler for that
+program, or some of that was written in assembler.  They mean the
+programming language, assembly language, not the program that reads and
+converts assembly language to machine code.  Now just like compilers
+for example C compilers, may have compiler specific directives that you
+can put in the code, assembly language has language items that are
+specific to the assembler to make the programming job easier or to
+be more exact about what you want the assembler to do.
+
+Macro.  You may from time to time come across the words macro assembler.
+All that means is the assembler and the assembly language it accepts
+provides a mechanism to make macros.  Very similar to the macros you find
+in the C programming language (assembly language came first naturally,
+but if you are reading this you learned C first).  Macros, as with C
+have a function like feel but are inline, so using macros in your
+assembly language you can create instruction sequences that you may wish
+to repeat in your code and 1) not have to type them every time and 2)
+if you want to change the sequence you dont have to change it all the
+places you used it, change it in one place.
+
+Instruction set simulator.  This is generally a program, software,
+that takes the bits and bytes of machine code for a particular processor,
+and like that processor exctracts the machine code instructions and
+executes them.  Using variables or arrays or whatever it pretends
+to have the same registers as the real processor, execute the instrutions
+like the real processor but the instruction set simulator software may
+not actually be written for or compile to run on the same processor
+that it is simulating.  This will make more sense when we get to it.
+Two main reaons for instruction set simulators are one to allow you
+to run programs that have been compiled for that processor or more
+specifically a platform.  For example a Gameboy Advance simulator or
+a Play Station simulator, etc.  Think about or go look at the mame
+project, that project contains many different instruction set simulators
+and the goal when writing those simulators was to run fast, before
+our desktop and laptop computers were as fast as they are today you
+wanted to play these games and have them run the same speed as the
+arcade.  An instruction set simulator can also be used for virtual
+machines, on Linux you can run Windows on qemu for example, you can
+run a Linux compiled for the ARM instruction set on an x86 computer
+using a qemu for the ARM instruction set for example.  Now on a tangent
+you may find that many virtual machines dont simulate every instruction
+but instead use features of the instruction set to let a fair percentage
+of the instructions run on the real processor for that machine, then
+when the virtual machine say wants to send a network packet and talks
+to what it thinks is the network card, then the emulator comes in
+and pretends to be a network card such that the operating system
+on the virtual machine doesnt know the difference.  An instruction
+set simulator strives to resemble the hardware to the point that
+the program doesnt know that it is not the real hardware.  How does
+a program "know" something like this?  It doesnt, what I mean by that
+is the program will crash or otherwise not run correctly if the
+instruction set simulator is not close enough to the real thing.
+
+Enough terminology for now.  In the processor world there are times more
+in the past than in the present where the core of the processor is
+designed (the part that actually parses and runs the machine code)
+one time and that is the processor everyone uses for that instruction
+set, no variations.  Take the 6502 for example, at least originally,
+my understanding is you created those processors by creating all of the
+silicon and metal layers in the chip by hand, all of the polygons on
+a drafting table.  Very much like the way a coin is created by an
+artist at a much larger scale than the actual coin, and from that model
+of the coin a machine is used to create the master dies that are used
+to stamp the coins at the proper size.  The old processors you made
+by hand what was essentially the master print or negative used in the
+photographic like process used to make a processor.  With that much work
+involved if you then wanted to take the generic 6502 processor and
+then create the processor in the Vic-20 or in the Commodore 64 you
+would probably just re-use the same drawings and add more stuff
+around it and not actually re-invent a clone of that original processor
+core.
+
+We do nothing of the sort today.  Hardware, logic, is design using
+programming languages very similar to and inspired by the software
+programming languages we used today.  To the point that there are
+the equivalent of compilers and linkers that compile that high level
+language down into assembly like fundamental logic gates or blocks
+and then different modules are glued together very much the way a
+linker glues together objects created by a compiler.  Just like the
+C programming language can be compiled down into any number of
+different assembly languages, the same source into many different
+implementations.  The hardware design languages can be compiled down
+into different mixtures of logic blocks depending on the target.  First
+off you have programmable logic like cplds and fpgas, these are chips
+that are filled with various fundamental logic blocks and arranged with
+a large network of interconnects, what makes them programmable is the
+interconnects can be changed temporarily or permanantly.  If I want
+to xor two bits together and have the result feed into some other
+logic block then the tools for that target knows how to take the high
+level hardware description langauge and describe the connections between
+logic blocks, then it is a matter of having a utility program all of those
+little connections in the programmable device.
+
+The chips we most often see today are not programmable logic, they are
+built from the ground up to serve a specific purpose, to implement a
+single design.  If you were to build a car from scratch you are either
+going to have to invent every little thing yourself, an engine, the
+pistons in the engine the header, cam, lifters, etc.  Or you might just
+buy an existing engine built by someone, and design your frame so that
+engine fits in it.  Likewise the transmission the drive shaft the
+gearboxes, brakes, etc.  So if you are a company like intel that builds
+the machinery and factories housing that machinery from the ground up to
+make chips, well you are basically designing your own engines and
+transmissions to go in your car.  But most companies hire an intel
+or some other chip maker to make the chips for them.  Each chip maker
+has developed a cell library, a collection of different logic blocks
+very much like machine code.  The hardware description language is then
+converted into basically lists of connections between the inputs and
+outputs of these logic blocks.  And just like we have assembly language
+to represent machine code, there are human readable ways to represent
+the cell library items for a particular foundry (chip factory).
+
+Just like we dont have to create newspapers by taking, by hand, little
+metal letters and arranging them in rows of words to stamp the page,
+we use computers to create the light and dark spots on a master that
+becomes the letters on a printed page, we use computers to arrange
+the massive rats nest of wires and logic blocks on a chip, just like
+a professionally made magazine or other printed material, sometimes
+some hand tweaking is required to make the thing perfect.
+
+So what was all of that about?  What that was all about is that many
+of the processors you write programs for today are 1) created using
+a programming language 2) that language is compiled down to create
+a chip using the generation of technology available at the foundrys
+at the time this chip was made (and remain available so long as that
+chip is still profitable enough to stay in production). 3) (here it comes)
+if that processor is successful enough to warrant new processors then
+either using the same hardware source code or the same code with
+features added (new instructions, bugs fixed, etc) may be used to
+create the new generation of that processor or 4) enough changes are
+made or completely new source code is created such that it is similar
+enough to the prior processor to execute most of the same instructions but
+perhaps does it in a more efficient or different way for some reason
+(speed, power, etc).  5) those new processors made a year or a few years
+later may be implemented using newer generations of chip technology
+making them perform faster for example.  Put all of that together and
+just like the evolution of a popular program like Microsoft Word
+it may open documents saved by prior versions, but it also has new stuff
+that is not reverse compatible.  You will find most popular instruction
+sets evolve, new instructions, new features to old instructions, old
+undesireable instructions or features removed possibly.  And the
+assembly language and assemblers have to choose to either evolve to
+handle everything frome the old to the new, or chose to draw a line
+in the sand and one side is one tool the other side is another.
+
+When you learn an assembly language that you didnt know before, as often
+as not, you are going to have to be aware that some of the instructions
+may not work on the processor you are trying to write a program for.
+There is no governing body to define the rules for assembly languages
+much less the documentation.  Each processor inventor and/or chip company
+has its own documentation, sometimes good, sometimes bad and often
+somewhere in the middle.   You may wonder how a chip with bad docs
+actually survives in the market, but they can and do.
+
+When reading a instruction set reference manual, you want to be looking
+for a few things.  You want to obviously be paying attention to the
+syntax of the assembly language, that is your primary learning
+exercise when picking up this manual.  But also if there are bit
+definiitions for the machine code you want to be paying attention to
+that, you should not have to go to stackoverflow.com and ask the question
+why is it that on x86 I can load a 32 bit register with a 32 bit
+number like 0x12345678 in one instruction, but on mips I can only load
+16 bits in a single instruction and on arm only 8 bits in a single
+instruction?  Why can this jump instruction only jump 128 bytes but
+this other jump can jump anywhere in memory?   The answers to all of
+those questions and more are and always have been, right there in
+the processor vendors documentation.  If you are using some web page
+and not the processor vendors documentation, go get the processor
+vendors documentation.  If the processor vendors documentation only
+has the syntax for the assembly language and not the machine code
+definition, you might want to find another processor to use, this is
+going to be more painful than normal.
+
+Now let us stretch this a bit more.  What about this RiSC16 instruction
+set, do a little googling and you will find a number of places that
+use it in their computer science or engineering colleges.  mips or
+dlx also are seen far and wide.  And some of those classes your job
+is to either create an instruction set simulator or create the hardware
+design using a hardware design language.  Now what does it mean to you
+if several thousand students every year take the same definition of
+something and are then sent off to create a program that matches or
+meats that definition?   Sure many are going to fail to get it right,
+that is a given, but even of the ones that did make a program that
+perfectly matches the instruction set definition, most of those
+implementations are going to be different, sometimes wildly different.
+I have created my own RiSC16 simulator and hardware description language
+based on the instruction set as defined on the link at the top of this
+document.  If you read down into that page and follow the code and
+links provided you will see that for such a simple instruction set
+considerable work has been put into making programs and a logic with
+caches, branch prediciton and all kinds of stuff that seems extremen
+for something that on the surface is so simple.  Most instruction sets
+that have that level of complexity have hundreds of instructions.  My
+implementation is meant to be easy to use, easy to follow, something
+that you might learn something from.  There is no interest in speed
+as I dont expect you to actually write complicated programs that
+would warrant such speed, I expect you to learn some fundamentals
+here then take that knowledge on to the next instruction set and the
+next and the next.  I firmly believe you should learn a few
+instruction sets if you are going to bother to learn any.  The secon
+and third and Nth are significantly easier than the first as the
+concepts and even syntax can be very similar from one to the next.  just
+like learning new programming langauges the basics of programming doesnt
+change with a new laguage, more often than not it is learning a new
+syntax.
+
+If and when you see my implementation of this processor, understand that
+first as a profession I do not do the hardware design langauge for chips.
+As a profession I do look at a lot of that code from other people, debug
+that code, sometimes propose fixes to that code, but I write software
+to test that code or write code to boot that processor or drivers to
+initialize peripherals within or around that processor.  These github
+projects allow me to explore, with you, my own designs based on what I
+have learned from others.  And the more important issue is that when
+you see this implementation, you see these waveforms representing all
+of the interconnect signals, and the bits in registers, etc, every
+implementation is going to look different inside, you might get used
+to this one and then look at another running the same program and not
+have a clue as to what you are looking at, until you take the time to
+understand what you are looking at.  Same goes for my instruction set
+simulator.  Many of the instruction set simulators I come across are
+trying to be fast or clever or both, and as a result can be very
+unreadable.  I hope that this one and others of mine that you may
+find are, in fact, readable.
+
+More definitions:
+
+Register.  When used in the context of assembly language a register
+is very much like a variable in C or other programming languages.  A
+difference though is that there are often a fixed number of registers
+some may have specific rules or limitations, and very often the names
+for them have been chosen.  So you have to reuse these variable like
+registers with names like r0, r1, r2...In a more general sense the
+term register is used a lot in programming.  For example a video
+card might have a register than holds the value of the brightness
+level being output.  By writing a new value to that register you can
+change the brighness.  Another register might be the contrast.  Or perhaps
+it may take a number of registers to describe the brightness and/or
+contrast output by a video card.  These latter types of registers are
+like the ones in a processor core, a chunk of bits somewhere that hold
+something, but this latter type is usually accessed by reading or
+writing a particular memory location.  The former type the type we
+are going to focus on when programming in assembly langauge, these
+have an intimate relationship with the processor instructions themselves
+in fact an instruction set relies heavily on the registers in that
+processor.
+
+My understanding and implementation of the RiSC16 instruction set.
+
+This processor has 8 so called general purpose registers.  One is
+actually special so 7 of them are general purpose.  All of the
+instructions in this instruction set rely on and operate on these
+registers.
+
+My shorthand reference for this instruction set is as follows:
+
+000aaabbb0000ccc add ra,rb,rc       ra = rb + rc
+001aaabbbsssssss addi ra,rb,simm    ra = rb + simm
+010aaabbb0000ccc nand ra,rb,rc      ra = ~(rb|rc)
+011aaaiiiiiiiiii lui ra,imm         ra=imm<<6
+100aaabbbsssssss sw ra,[rb+simm]
+101aaabbbsssssss lw ra,[rb+simm]
+110aaabbbsssssss beq ra,rb,simm
+111aaabbb0000000 jalr ra,rb         ra = pc; j [rb]
+1111111111111111 halt
+
+If it doesnt make sense right off, dont worry we are going to go through
+each of these in detail.
+
+
+
