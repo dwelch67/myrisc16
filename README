@@ -359,5 +359,80 @@ My shorthand reference for this instruction set is as follows:
 If it doesnt make sense right off, dont worry we are going to go through
 each of these in detail.
 
+Understand that this processor, with 8 instructions is not the norm.
+This processor is simple in the sense that you can easily wrap your head
+around all of its instructions, all that it does, to make useful programs
+though you as a programmer have to work harder than you would on other
+processors.  A goal here is to worry less about what you cant easily
+do with this processor and instead focus on what you can do and how
+you go about understanding what and why there are rules and limitations
+to each instruction.
+
+When the instruction set is laid out as I have shown it above you should
+very quickly notice that with one exception you can tell what instruction
+it is by looking at the top three bits.  This certainly makes it easier
+for everyone to figure out what instruction they are looking at when
+presented with a bunch of bits.  The one exception is something I added
+to the RiSC16 defined by Professor Jacob.  Some processors will have
+a halt instruction, but in general a processors job is to run forever
+so long as the power is on.  The processors with halt instructions are
+often microcontrollers and the halt is a temporary state, basically go
+to sleep and consume very little power until I wake you up, then
+wake up fast do a few things and go back to sleep.  For example your
+television remote control, in order to prevent the batteries from
+having to be replaced daily or weekly, the electronics in a device like
+that use very very little power when in sleep mode, then they wake up
+still using little power do a quick task then go back to sleep.  Battery
+life being a primary design requirement across the board.  I have a
+halt instruction because this processor is for educational purposes
+using a simulator, write a small amount of code, end with a halt, look
+at the output of the simulator.  The simulator certainly can be left
+running a program forever or for a long time if you have a program that
+you want to run that way, not a problem.  But many of the examples will
+rely on the halt to end the example and allow the output to be examined
+easily.
+
+The second thing you might assume upon first inspection, and with
+experience right away is that this instruction set appears to be "fixed
+word length".  Fixed word length means the length of the instructions
+as measured in number of bits, is the same for all the instructions
+in the instruction set.  All 9 instructions are exactly 16 bits no
+more no less.  Because it allows for simpler logic and a more deterministic
+nature the relatively modern risc processors tend to use fixed word length
+instruction sets.  Not all, and not all all the time, but compared to the
+older processors like the 6502 and 8086 which are considered cisc, risc
+leans towards fixed.  Variable word length instruction sets are found
+in processors like the 6502 and 8086 and many others.  Variable word
+length means that some instructions use more bits than others, some might
+be 8 bits and some might be as many as 81 bits (9 bytes) or more in
+modern 64 bit cisc processors for a single instruction.  A fixed word
+length processor knows what it needs to do when it reads and decodes
+that single instruction, it does not have to go back out and fetch or
+wait for the rest of the instruction to arrive, it is all there.  A drawback
+would be that many simple instructions you might want to have dont
+need all of those bits and you are wasting space and bandwidth for the
+simpler instructions.  Variable word length instructions you ideally
+want to make the commonly used instructions shorter and the less commonly
+used instructions longer.  Many times the additional length is for other
+reasons as we will see shortly with the addi instruction.
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+This is a rough draft and a work in progress, if/when I get through the
+first pass then I will go back and prune and tweak and re-write.
