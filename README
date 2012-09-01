@@ -416,6 +416,39 @@ want to make the commonly used instructions shorter and the less commonly
 used instructions longer.  Many times the additional length is for other
 reasons as we will see shortly with the addi instruction.
 
+With experience, another thing you notice at first glance is that this
+RiSC16 instruction set uses some registers with the conditional branch.
+The thought is, this is mips like.  Upon further study you see that
+indeed the comparison and the conditional branch are done by the
+same instruction.  The more popular way to do this is to have alu
+functions set flags, including a compare instruction, which is a subtract
+that does not save the result only updates the flags.  Then the conditional
+branch instruction(s) uses the flags set by some prior instruction.  In
+this case the instruction compares the contents of the two registers
+and then makes a decision to branch or not.  So now you ask yourself,
+if the branch is mips like, what else is mips like, is there a delay
+slot after the branch and what about r0?  In this case, RiSC16, those
+two questions are both yes, just like mips.  For the two branch
+instructions beq and jalr, the instruction after the branch is also
+executed.  The argument is you lose clocks re-filling the pipeline
+when you branch, so this delay slot allows you to recover one of those
+clocks.  At least at the time, today pipelines are longer, most serious
+processors use pipelines and dont suffer for the lack of a delay slot.
+You will find most processors do not work this way, so try not to
+allow this concept to dominate your thinking on assembly language and
+instruction sets.  Likewise the lack of flags, using a compare and
+branch in the same instruction is also not the norm, keep that in mind.
+Lastly, r0, what is the r0 thing?  Mips and RiSC16 treat r0 as a special
+register.  When read it is always zero, and it is read only, you can
+encode an instruction with r0 as the result, but r0 will not be written
+the instruction executes as much as it can, but the write to r0 does not
+happen.  As a programmer you could have done this with any register on
+your own, no need to lose one to be zero, it a useful way to do things
+if you have a register you can safely assume is zero.  For example you
+can use beq to compare something to the value zero by having one of
+the two compare registrs use r0.  You can use addi with r0 to set
+lower bits in the destination register.
+
 
 
 
