@@ -810,7 +810,7 @@ pc = pc + 1 + 0x0000 = pc + 0x0001
 pc = pc + 1 + 0x003F = pc + 0x0040
 
 So we can go anywhere from 63 (0x3F) instructions backward and 64 (0x40)
-forward.
+forward relative to the beq instruction itself.
 
 Now typically when programming in assembly language you dont normally
 have to count instructions and set the immediate value, some assemblers
@@ -835,13 +835,16 @@ in the instruction for you.  If the computed value does not conform to
 the sign extended immediate limitations then the assembler will give
 you some flavor of error message.  Hopefully not to cryptic.
 
+
+
+
 At this point I normally would say that I have created an instruction
 set simulator and an assembler so that you can learn assembly language
 for this instruction set without painful to compile tools.  This tutorial
-started off telling you that you need to know C.  In part because C
-will be used to explain what the asm is doing, second because you should
-be able to compile the the tool or tools, written in C, using your C
-compiler of choice (within reason).  What I have not done, at least
+started off telling you that you need to know C.  In part because C and
+C syntax will be used to explain what the asm is doing, second because
+you should be able to compile the the tool or tools, written in C, using
+your C compiler of choice (within reason).  What I have not done, at least
 not so far, is create an assembler.  At least not a traditional assembler
 that takes ascii files and makes machine code.  I have borrowed a cool
 way to use a C compiler as an assembler.
@@ -868,10 +871,93 @@ label(one);
     beq(r1,r0,two);
     beq(r0,r0,one);
 
-This assembler is so simple, that we are going to walk through it
-and understand the encoding of instructions.
+You can see that I dont need to write a parser, the C language compiler
+does the parsing, we turn an asm instruction into a C function and
+just pass it the same parameters.
 
-The key to this assembler is the file tinyasm.c
+The key to this assembler is the file tinyasm.c.  It takes advantage
+of C macros that let you take whatever ascii is passed and shove that
+into the next level C program that is created by the front end parser.
+The registers are just variables that have been declared and initialized
+for you.
+
+As the code I borrowed from I start everything with a macro, but I have
+the macro call a full function so that I can easily do more in the
+function than dealing with the code as macros.  I can check for sign
+extended immediate values for example.
+
+So the add instruction add ra,rb,rc starts like this
+
+#define add(ra,rb,rc)       do_add(ra,rb,rc)
+
+And the full function is this
+
+void do_add ( unsigned int ra, unsigned int rb, unsigned int rc )
+{
+    if((ra>7)||(rb>7)||(rc>7))
+    {
+        printf("do_add limit fail pc = %u \n",__pc__);
+        exit(1);
+    }
+    emit((0<<13)|(ra<<10)|(rb<<7)|(rc));
+}
+
+You can see this allows for some limit checking, unlike a real assembler
+with a full parser, I am not able to do the complete job of syntax
+checking, you can make mistakes and get away with stuff you normally
+wouldnt with a real assembler.  The tradeoff here is that you can very
+easily see the connection to machine code, and later will, if you wish,
+create your own pseudo instructions.
+
+From our reference material the add instruction looks like this
+
+000aaabbb0000ccc add ra,rb,rc       ra = rb + rc
+
+16 bits, upper three bits are zero.  Then nine other bits, three sets
+of three, define the general purpose registers used in the instruciton.
+The tinyasm magic will put the numbers 0-7 in the variables ra, rb, rc
+passed to the do_add() function.
+
+add r1,r2,r3
+
+becomes this
+
+int r1=1, r2=2, r3=3;
+do_add(r1,r2,r3);
+
+which is basically
+
+do_add(1,2,3);
+
+Using the instruction definition
+
+000aaabbb0000ccc add ra,rb,rc       ra = rb + rc
+
+we need to make sure that the register numbers are limited to three
+bits.  if ra was an 8 for example and we didnt do a check for it that
+fourth bit would/could wander into our opcode field and change the
+instruction from an add to an addi, that would be a problem.
+
+A quick and dirty method that works fine with the macro would be to
+simply and the incoming number with a 7, insuring it is only 3 significant
+bits.  But I wanted at least some warnings and errors so I limit check
+the incoming values, if above 7 then error, which means if it it gets
+encoded the value is between 0 and 7;
+
+The emit macro takes a word and emits it out into the instruciton stream
+in the binary.  Most places used that word is a machine instruction.
+So do_add when it calls emit() is converting from asm a list of register
+numbers to machine code, bits in the right place for the opcode and
+bits that indicate what registers are used as operands and the destination.
+
+emit((0<<13)|(ra<<10)|(rb<<7)|(rc));
+
+
+
+
+
+
+
 
 
 

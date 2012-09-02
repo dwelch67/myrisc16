@@ -159,7 +159,7 @@ void do_lea ( unsigned int ra, unsigned int imm )
 #define lea(ra,imm)         do_lea(ra,imm)
 #define halt()              emit(0xFFFF);
 
-int r0 = 0, r1 = 1, r2 = 2, r3 = 3, r4 = 4, r5 = 5, r6 = 6, r7 = 7;
+unsigned int r0 = 0, r1 = 1, r2 = 2, r3 = 3, r4 = 4, r5 = 5, r6 = 6, r7 = 7;
 
 #define START(filename) void assemble(void) { __target_filename__ = filename;
 #define END   for(;__pc__<0x10000;) emit(0xFFFF); }
