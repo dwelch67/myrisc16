@@ -953,6 +953,92 @@ bits that indicate what registers are used as operands and the destination.
 emit((0<<13)|(ra<<10)|(rb<<7)|(rc));
 
 
+Now lets dive in and learn some assembly.  You will do the most for
+yourself by typing these lessons in manually.  As you know from other
+programming experience an important part of programming is correctly
+typing in the language and debugging the code that you have written.
+By cutting and pasting you lose that experience for code that you know
+the expected result, and then experience it for code you are not sure
+about.
+
+---------------------------------------------------------------------
+Lesson 0:  Building the tools.
+
+The first tool of interest is the instruciton set simulator mr16sim.c.
+I have tried to make the code portable, hopefully it compiles for you,
+if not let me know.
+
+If using the gnu C compiler
+
+gcc -o mr16sim.exe -o mr26sim.c
+
+
+./mr16sim.exe
+mr16sim filename.csv
+
+And now an example lesson.  Dont enter the lines starting with ----
+
+---- lesson0.c
+#include "tinyasm.c"
+START("lesson0.csv");
+
+    lui(r1,0x0000);
+    addi(r1,r1,1);
+    addi(r1,r1,1);
+    halt();
+
+END
+---- lesson0.c
+
+gcc -o lesson0.exe lesson0.c
+
+./lesson0.exe
+Pass 1 completed, starting output pass.
+Assembly Succeeded.
+
+./mr16sim.exe lesson0.csv
+[0x0000] 0x6400 lui r1,0x000 (0x0000)
+write_reg(r1,0x0000)
+[0x0001] 0x2481 addi r1,r1,0x0001 (1)
+write_reg(r1,0x0001)
+[0x0002] 0x2481 addi r1,r1,0x0001 (1)
+write_reg(r1,0x0002)
+[0x0003] 0xFFFF halt
+fetch_count 4
+write_count 0
+read_count 0
+
+This lesson is not about what did these instructions do but about
+making sure the tools work, if the tools dont work then stop here.
+
+
+---------------------------------------------------------------------
+Lesson 1: LUI
+
+---- lesson1.c
+#include "tinyasm.c"
+START("lesson1.csv");
+
+    lui(r1,0x0000);
+    lui(r2,0x1200);
+    lui(r3,0x6780);
+    halt();
+
+END
+---- lesson1.c
+
+When simulated the output is:
+
+[0x0000] 0x6400 lui r1,0x000 (0x0000)
+write_reg(r1,0x0000)
+[0x0001] 0x6848 lui r2,0x048 (0x1200)
+write_reg(r2,0x1200)
+[0x0002] 0x6D9E lui r3,0x19E (0x6780)
+write_reg(r3,0x6780)
+[0x0003] 0xFFFF halt
+fetch_count 4
+write_count 0
+read_count 0
 
 
 
@@ -966,10 +1052,10 @@ emit((0<<13)|(ra<<10)|(rb<<7)|(rc));
 
 
 
+building an instruction set simulator
 
 
-
-
+at look at and simulating logic
 
 
 
