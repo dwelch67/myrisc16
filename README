@@ -1,4 +1,9 @@
 
+This is a rough draft and a work in progress, if/when I get through the
+first pass then I will go back and prune and tweak and re-write.
+
+
+
 This is my implementation of the Ridiculously Simple Computer.  The
 instruction set is defined here:
 
@@ -348,7 +353,7 @@ My shorthand reference for this instruction set is as follows:
 
 000aaabbb0000ccc add ra,rb,rc       ra = rb + rc
 001aaabbbsssssss addi ra,rb,simm    ra = rb + simm
-010aaabbb0000ccc nand ra,rb,rc      ra = ~(rb|rc)
+010aaabbb0000ccc nand ra,rb,rc      ra = ~(rb&rc)
 011aaaiiiiiiiiii lui ra,imm         ra=imm<<6
 100aaabbbsssssss sw ra,[rb+simm]
 101aaabbbsssssss lw ra,[rb+simm]
@@ -418,39 +423,455 @@ reasons as we will see shortly with the addi instruction.
 
 With experience, another thing you notice at first glance is that this
 RiSC16 instruction set uses some registers with the conditional branch.
-The thought is, this is mips like.  Upon further study you see that
-indeed the comparison and the conditional branch are done by the
-same instruction.  The more popular way to do this is to have alu
-functions set flags, including a compare instruction, which is a subtract
-that does not save the result only updates the flags.  Then the conditional
-branch instruction(s) uses the flags set by some prior instruction.  In
-this case the instruction compares the contents of the two registers
-and then makes a decision to branch or not.  So now you ask yourself,
-if the branch is mips like, what else is mips like, is there a delay
-slot after the branch and what about r0?  In this case, RiSC16, those
-two questions are both yes, just like mips.  For the two branch
-instructions beq and jalr, the instruction after the branch is also
-executed.  The argument is you lose clocks re-filling the pipeline
-when you branch, so this delay slot allows you to recover one of those
-clocks.  At least at the time, today pipelines are longer, most serious
-processors use pipelines and dont suffer for the lack of a delay slot.
-You will find most processors do not work this way, so try not to
-allow this concept to dominate your thinking on assembly language and
-instruction sets.  Likewise the lack of flags, using a compare and
-branch in the same instruction is also not the norm, keep that in mind.
-Lastly, r0, what is the r0 thing?  Mips and RiSC16 treat r0 as a special
-register.  When read it is always zero, and it is read only, you can
-encode an instruction with r0 as the result, but r0 will not be written
-the instruction executes as much as it can, but the write to r0 does not
-happen.  As a programmer you could have done this with any register on
-your own, no need to lose one to be zero, it a useful way to do things
-if you have a register you can safely assume is zero.  For example you
-can use beq to compare something to the value zero by having one of
-the two compare registrs use r0.  You can use addi with r0 to set
-lower bits in the destination register.
+The thought is, this is MIPS like. (MIPS is another, well known,
+instruction set).  Upon further study you see that indeed the comparison
+and the conditional branch are done by the same instruction.  The more
+popular way to do this is to have alu functions set flags, including a
+compare instruction, which is a subtract that does not save the result
+only updates the flags.  Then the conditional branch instruction(s) uses
+the flags set by some prior instruction.  For the RiSC16 the beq
+instruciton compares the contents of the two registers.  If they match
+then the branch happens, if they do not match then the branch does not
+happen.  So now you ask yourself, if the branch is mips like, what else
+is mips like?  Is there a delay slot after the branch and what about r0?
+In this case, RiSC16, there is not a branch delay slot.  For pipelined
+processors (pipelining allows for higher execution performance) when
+a branch happens the pipeline needs to be flushed and re-filled, this
+costs clock cycles, a branch delay slot or slots means that one or
+some of the instructions after the branch will be executed, recovering
+the cost of some of those lost clock cycles.  Typically you would
+arrange instructions so that one of the last things you would have done
+before performing the branch (that does not affect the branch) is
+placed after the branch.  If you dont have an instruction you can move
+there then a nop is used, and you basically lose the clock cycle anyway.
+So the RiSC16 does not have a delay slot, but r0 is mips like.  What
+that means is r0 is special, the contents of r0 is always the value
+zero (0x0000).  You can read/use r0 wherever you want but if it is the
+destination register in an instruction, its contents are not changed,
+it is always zero. As a programmer you could have done this with any
+register on your own, no need for hardware to make one zero.  Processors
+like this one are designed such that you need a register to be zero to
+do useful things, so might as well force one.  Again it wasnt required
+to force one as a programmer you could have set one and left it or
+set a register to zero when you needed it.  In the spirit of the RiSC16
+instruction set I have also forced r0 to zero in my implementations.
+Having a register contain zero makes a few of the instructions more
+powerful.  For example add, if one of the two operand regisers is
+a zero then the add becomes a move instruction, move the contents
+from one to the other.  If both operands are zero then it becomes
+move zero to the destination register.  If all three are zero then it
+becomes a nop.
+
+I am going to run through a reference for the instruction set, then
+some observations, and then we will start talking about machine and
+assembly language programming.  Between now and then the text will
+have the feel that you understand assembly language, this will serve
+as a reference once you do know assembly language.
+
+
+ADD
+
+000aaabbb0000ccc add ra,rb,rc       ra = rb + rc
+
+ra, rb, and rc are any one of the 8 general purpose registers.  The
+contents of rb and rc are added together and stored in register ra
+(if ra is not r0).
+
+examples
+
+add r1,r2,r3    r1 = r2 + r3
+add r1,r2,r0    r1 = r2 + r0, since r0 = 0 : r1 = r2.
+add r3,r0,r0    r3 = r0 + r0, since r0 = 0 : r3 = 0x0000
+
+ADDI
+
+001aaabbbsssssss addi ra,rb,simm    ra = rb + simm
+
+ra and rb are any one of the 8 general purpose registers, the contents
+of rb and the immediate value are added together and the result is
+stored in ra (if ra is not r0).
+
+The immediate for addi, is a signed immediate, from the instruction
+encoding we see there are 7 bits available to the immediate value,
+being signed means sign extended, so whatever is in bit 6 is used
+in bits 7 to 15.  for example:
+
+001xxxxxx1xxxxxx instruction encoding
+1111111111xxxxxx immediate value
+
+001xxxxxx0xxxxxx instruction encoding
+0000000000xxxxxx immediate value
+
+001xxxxxx1000101 instruction encoding
+1111111111000101 immediate value
+
+001xxxxxx1000101 instruction encoding
+0000000000100101 immediate value
+
+So the valid immediate values are 0x0000 to 0x003F and 0xFFC0 to 0xFFFF
+Seeing this encoding and a description for the immediate you should never
+need to ask "Why cant I use an immediate value of 0x1234 with addi".
+You now know the reason is because there is no way to encode that value
+in the instruction.
+
+examples
+
+addi r1,r2,0x0010    r1 = r2 + 0x0010
+addi r1,r0,0x0034    r1 = r0 + 0x0034, since r0 = 0 : r1 = 0x0034
+
+NAND
+
+010aaabbb0000ccc nand ra,rb,rc      ra = ~(rb&rc)
+
+This is a NOT AND instruction. ra, rb, and rc are any one of the
+8 general purpose registers.  rb and rc are ANDed together (bit 0
+ANDed with bit 0, bit 1 ANDed with bit 1, etc).  The result of that
+AND operation is then inverted (bit 0 = NOT bit 0, bit 1 = NOT bit1,
+etc).
+examples
+
+nand r1,r2,r3  r1 = ~(r2&r3)
+nand r5,r0,r7  r5 = ~(r0&r7) -> r5 = ~(0) = 0xFFFF
+
+LUI
+
+011aaaiiiiiiiiii lui ra,imm         ra=imm<<6
+
+The lui instruction is a load upper immediate.  Since we need 3 bits
+for the opcode, 3 bits for the destination register the largest immediate
+we can encode is 10 bits.  This instruciton zeros the lower 6 bits and
+places the immediate value encode in the instruction in the upper 10
+bits of the specified register.  The valid immediate values that
+can be encoded in the instruction bits are 0x000 to 0x3FF.  This also
+means that valid immediate values are 0x0000, 0x0040, 0x0080, 0x0100,
+0x0140, etc.  Any multiple of 0x40 between 0x0000 and 0xFFFF.
+
+This docment and examples are going to use an assembly language where
+you specify the immediate value you want.  For example if you want
+0x0040 you put 0x0040 in the assembly language.  The instruction will
+be encoded with a 0x001, you dont put 0x001 to get 0x0040 you put 0x0040
+to get 0x0040.
+
+example
+
+lui r1,0x1200     r1 = 0x1200
+lui r1,0xFFC0     r1 = 0xFFC0
+
+SW
+
+100aaabbbsssssss sw ra,[rb+simm]
+
+This instruction writes or stores a word to a location in memory.  The
+myrisc16 implementation of memory addressing is in whole 16 bit words,
+you cannot address a byte within a word.  Just like the addi instruction
+the immediate value is a signed extended immediate value, the same rule
+applies the hardware only allows immediates 0x0000 to 0x003F or 0xFFC0
+to 0xFFFF.
+
+examples
+
+sw r1,[r2+0x0034]  write r1 to address r2+0x0034
+
+LW
+
+101aaabbbsssssss lw ra,[rb+simm]
+
+Exactly like the store word instruction, but this is a load word it
+reads from memory, not writes.  Everything else is the same, immediates
+are limited to 0x0000 to 0x003F or 0xFFC0 to 0xFFFF.  Only 16 bit
+words are addresssable, the 8 bit bytes within a word are not.
+
+BEQ
+
+110aaabbbsssssss beq ra,rb,simm
+
+This instruction compares the values in registers ra and rb, if equal
+then the next instruction executed is at pc + 1 + simm.  Where pc is
+the address of the beq instruciton in question.  If the contents of
+ra and rb are not equal then the next instruction afer beq is
+executed, no branch happens.
+
+beq uses a sign extended immediate value like addi, sw, and lw.  So
+the immediate values are limited to 0x0000 to 0x003F and 0xFFC0 to 0xFFFF.
+
+Assemblers will generally allow you to use labels instead of having
+to add up the number of instructions.
+
+
+JALR
+
+111aaabbb0000000 jalr ra,rb         ra = pc; j [rb]
+
+Jump and link register.  First the instruction after the jalr instruction
+in question, pc+1, is stored in the ra register (if ra is not r0).  Next
+the program control branches to the address in the rb register.
+
+HALT
+
+1111111111111111 halt
+
+This instruciton is not part of RiSC16, it is specific to myrisc16.
+Note the top three bits are the opcode for JALR.  Note that bits 0 to
+6 in the jalr instruction are zero.  This implies that if any of the
+lower 7 bits are non-zero it is not really a jalr but an undefined
+instruction.  myrisc16 uses one of those undefined instructions to
+implement a halt instruction.  The halt instruciton causes the processor
+to halt, to stop executing instructions.  This is atypical for processors
+but it makes it much easier to demonstrate simple programs for teaching
+purposes.
 
 
 
+
+
+
+As mentioned before risc processors tend to use fixed length instructions.
+And the fixed length instructions tend to be the same width as the registers
+and/or memory busses, etc.  Which means that you dont have enough bits
+to both encode a load immediate instruciton and have a full registers
+width of bits to put in that register.  The lui instruciton needs 3 bits
+for the opcode and 3 bits for the destination register.  That leaves
+us with only 10 maximum bits we can load.  Now what they could have done
+is have had a load high and a load low, for example two other opcode
+bits could have been used:
+
+011aaa00iiiiiiii lh ra,imm     ra = (imm<<8) | (ra&0x00FF);
+011aaa01iiiiiiii lhz ra,imm    ra = (imm<<8) | 0x0000
+011aaa10iiiiiiii ll ra,imm     ra = imm | (ra&0xFF00);
+011aaa11iiiiiiii llz ra,imm    ra = imm | 0x0000
+
+So to load the value 0x4567 into a register using this fantasy
+instruciton encoding
+
+lhz ra,0x4500
+ll ra,0x0067
+
+The RiSC16 processor does not do that in that form, but it does it in
+another form.  The lui instruciton allows you to set all of the bits
+in a register, with the lower 6 always zero and the upper 10 whatever
+you want.  And if you think about it if you have used lui to set the
+upper 10 bits of a register, and the lower are zeros then you can use
+addi with r0 as the register operand and addi can be used to modify
+the lower 6 bits.  So using RiSC16 to load the value 0x4567 into a
+register
+
+lui ra,0x4540
+addi ra,r0,0x0027
+
+Variable word instruction sets often allow any bit pattern because they
+often encode a full sized immediate as extra words in the instruction.
+A 32 bit x86 move of some immediate value into a register might be one
+to a few 8 bit bytes for the opcode indicating this is a load immediate
+of size 32 bits into a specific register.  Then the instruction would
+be followed by that 32 bit immediate, 4 bytes.
+
+
+Why on earth would you have a nand instruction in a processor?  Dont
+moste have and instructions and not instructions separately?  Let's
+look at some truth tables:
+
+not c = not a
+a    c
+0    1
+1    0
+
+or  c = a or b
+a b  c
+0 0  0
+0 1  1
+1 0  1
+1 1  1
+
+and  c = a and b
+a b  c
+0 0  0
+0 1  0
+1 0  0
+1 1  1
+
+nand c = not ( a and b )
+a b  c
+0 0  1
+0 1  1
+1 0  1
+1 1  0
+
+nor c = not ( a or b )
+a b  c
+0 0  0
+0 1  1
+1 0  1
+1 1  1
+
+xor c = a xor b
+a b  c
+0 0  0
+0 1  1
+1 0  1
+1 1  0
+
+Using only nand truth tables we can easily implement not, first notice
+in the and table that anything anded with itself is itself
+
+and  c = a and b
+a b  c
+0 0  0
+1 1  1
+
+so to get c = not a we need
+
+c = a nand a
+
+a a  c
+0 0  1
+1 1  0
+
+Using only nand truth tables you can implement xor logic (from wikipedia)
+
+d = a nand b
+e = a nand d
+f = b nand d
+c = e nand f
+
+a b  d  e  f  c
+0 0  1  1  1  0
+0 1  1  1  0  1
+1 0  1  0  1  1
+1 1  0  1  1  0
+
+c = a xor b
+
+De Morgan says that  a or b = not ((not a) and (not b))
+
+= not ((not a) and (not b))
+= (not a) nand (not b)
+= (a nand a) nand (b nand b)
+
+d = a nand a
+e = b nand b
+c = d nand e
+
+a b  d  e  c
+0 0  1  1  0
+0 1  1  0  1
+1 0  0  1  1
+1 1  0  0  1
+
+c = a or b
+
+So a nor operation then would be c = not ( a or b ).  Since we have
+done c = a or b and c = not a we know
+
+
+d = a nand a
+e = b nand b
+f = d nand e
+c = f nand f
+
+a b  d  e  f  c
+0 0  1  1  0  1
+0 1  1  0  1  0
+1 0  0  1  1  0
+1 1  0  0  1  0
+
+c = a nor b
+
+I think you get the idea, you can make any other logic operation using
+nand operations.  (same is true for nor).  If you wander about wikipedia
+you will see that for the various boolean operations they show you how
+to implement that operation using nand gates.
+
+
+http://en.wikipedia.org/wiki/OR_gate
+http://en.wikipedia.org/wiki/NOR_gate
+http://en.wikipedia.org/wiki/AND_gate
+http://en.wikipedia.org/wiki/NAND_gate
+http://en.wikipedia.org/wiki/XOR_gate
+
+
+The beq instruction uses a sign extended immediate, this allows you
+to branch forward and backward but only by a limited amount.  Just
+like the addi, sw, and lw instructions the sign extended immediate is
+limited to 0x0000 to 0x003F or 0xFFC0 to 0xFFFF, no other values
+are allowed.  So what if we encoded a 0x7F in to the simm bits?  That
+would give 0xFFFF, which if you are fast with your twos complement
+math you know that is a minus one (-1).  pc = pc + 1 + 0xFFFF means
+pc = pc + 1 - 1 = pc.  An infinite loop.
+
+So what are our actual branch limits?  Our immediate is limited to two
+ranges 0x0000 to 0x003F and 0xFFC0 to 0xFFFF.  So we should try those
+four limits and see what happens.  It is assumed that you understand
+twos complement.  The value pc here is the address of the beq instruction
+itself.
+
+pc = pc + 1 + 0xFFC0 = pc + 0xFFC1 = pc - 0x003F
+pc = pc + 1 + 0xFFFF = pc + 0x0000
+pc = pc + 1 + 0x0000 = pc + 0x0001
+pc = pc + 1 + 0x003F = pc + 0x0040
+
+So we can go anywhere from 63 (0x3F) instructions backward and 64 (0x40)
+forward.
+
+Now typically when programming in assembly language you dont normally
+have to count instructions and set the immediate value, some assemblers
+might not even let you set the immediate.  The use of labels is typical.
+
+for example
+
+one:
+  ;some code
+  ;more code
+  beq r1,r0,one  ; if r1 == r0 then branch to the first instruction after
+                 ; the label one
+  beq r1,r2,two
+  ;some code
+  ;more code
+two:
+
+The assembler is keeping track of instructions and labels, the assembler
+will then figure out the address for the beq and the address for the
+destination.  The assembler will do the math and encode the right value
+in the instruction for you.  If the computed value does not conform to
+the sign extended immediate limitations then the assembler will give
+you some flavor of error message.  Hopefully not to cryptic.
+
+At this point I normally would say that I have created an instruction
+set simulator and an assembler so that you can learn assembly language
+for this instruction set without painful to compile tools.  This tutorial
+started off telling you that you need to know C.  In part because C
+will be used to explain what the asm is doing, second because you should
+be able to compile the the tool or tools, written in C, using your C
+compiler of choice (within reason).  What I have not done, at least
+not so far, is create an assembler.  At least not a traditional assembler
+that takes ascii files and makes machine code.  I have borrowed a cool
+way to use a C compiler as an assembler.
+
+So what would normally look like this:
+
+  addi r1,r0,0x0020
+  nand r2,r0,r0
+one:
+  add r1,r1,r2
+  beq r1,r0,two
+  beq r0,r0,one
+two:
+
+Looks like this:
+
+declare(one);
+declare(two);
+    ...
+    addi(r1,r0,0x0020);
+    nand(r2,r0,r0);
+label(one);
+    add(r1,r2,r3);
+    beq(r1,r0,two);
+    beq(r0,r0,one);
+
+This assembler is so simple, that we are going to walk through it
+and understand the encoding of instructions.
+
+The key to this assembler is the file tinyasm.c
 
 
 

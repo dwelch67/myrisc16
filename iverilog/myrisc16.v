@@ -75,7 +75,7 @@ begin
                 begin
                     if(ra!=3'b000)
                     begin
-                        gpr[ra] = ~(gpr[rb]|gpr[rc]);
+                        gpr[ra] = ~(gpr[rb]&gpr[rc]);
                     end
                     pc = pc_next;
                 end
