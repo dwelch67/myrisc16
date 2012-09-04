@@ -1019,9 +1019,6 @@ Lesson 1: LUI
 #include "tinyasm.c"
 START("lesson1.csv");
 
-    lui(r1,0x0000);
-    lui(r2,0x1200);
-    lui(r3,0x6780);
     halt();
 
 END
@@ -1029,16 +1026,41 @@ END
 
 When simulated the output is:
 
-[0x0000] 0x6400 lui r1,0x000 (0x0000)
-write_reg(r1,0x0000)
-[0x0001] 0x6848 lui r2,0x048 (0x1200)
-write_reg(r2,0x1200)
-[0x0002] 0x6D9E lui r3,0x19E (0x6780)
-write_reg(r3,0x6780)
-[0x0003] 0xFFFF halt
-fetch_count 4
+[0x0000] 0xFFFF halt
+fetch_count 1
 write_count 0
 read_count 0
+
+What does it do?
+
+Actually all it does is halt, the point of this lesson though is to
+introduce the framework for the programs using this tinyasm assembler
+C thing.  All of these programs start with an include of tinyasm.c
+and a START line with the output filename.  And finish with a halt()
+and and END line.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
