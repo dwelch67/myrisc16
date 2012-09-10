@@ -55,13 +55,30 @@ void do_add ( unsigned int ra, unsigned int rb, unsigned int rc )
     }
     emit((0<<13)|(ra<<10)|(rb<<7)|(rc));
 }
-void do_addi ( unsigned int ra, unsigned int rb, int simm )
+void do_addi ( unsigned int ra, unsigned int rb, unsigned int simm )
 {
-    if((ra>7)||(rb>7)||(simm>63)||(simm<-64))
+    if((ra>7)||(rb>7))
     {
         printf("do_addi limit fail pc = %u \n",__pc__);
         exit(1);
     }
+    if(simm&0x0040)
+    {
+        if((simm&0xFFC0)!=0xFFC0)
+        {
+            printf("do_addi limit fail pc = %u \n",__pc__);
+            exit(1);
+        }
+    }
+    else
+    {
+        if((simm&0xFFC0)!=0x0000)
+        {
+            printf("do_addi limit fail pc = %u \n",__pc__);
+            exit(1);
+        }
+    }
+
     emit((1<<13)|(ra<<10)|(rb<<7)|(simm&0x7F));
 }
 void do_nand ( unsigned int ra, unsigned int rb, unsigned int rc )

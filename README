@@ -1019,6 +1019,10 @@ Lesson 1: LUI
 #include "tinyasm.c"
 START("lesson1.csv");
 
+    lui(r1,0x0000);
+    lui(r2,0x0000);
+    lui(r1,0xABC0);
+    lui(r5,0x1200);
     halt();
 
 END
@@ -1026,34 +1030,172 @@ END
 
 When simulated the output is:
 
-[0x0000] 0xFFFF halt
-fetch_count 1
+
+[0x0000] 0x6400 lui r1,0x000 (0x0000)
+write_reg(r1,0x0000)
+[0x0001] 0x6800 lui r2,0x000 (0x0000)
+write_reg(r2,0x0000)
+[0x0002] 0x66AF lui r1,0x2AF (0xABC0)
+write_reg(r1,0xABC0)
+[0x0003] 0x7448 lui r5,0x048 (0x1200)
+write_reg(r5,0x1200)
+[0x0004] 0xFFFF halt
+fetch_count 5
 write_count 0
 read_count 0
 
 What does it do?
 
-Actually all it does is halt, the point of this lesson though is to
-introduce the framework for the programs using this tinyasm assembler
-C thing.  All of these programs start with an include of tinyasm.c
-and a START line with the output filename.  And finish with a halt()
-and and END line.
+Lui stands for load upper immediate.  An immediate is a constant that
+is encoded in the machine code instruction itself.  If you look at the
+reference material above, the instruction is 16 bits.  The number of
+bits used to figure out what instruction this is, the opcode, is 3 bits
+and the number of bits in the instruction to indicate what register is
+going to get the immediate is 3 bits.  So 16-3-3 = 10 bits left over.
+Our registers are 16 bits wide so the biggest immediate we can have
+is 10 bits.  The upper means load those 10 bits into the upper 10 bits
+of the register.  The lui instruction sets the lower 6 bits to zero so
+all 16 bits in the register are modified by this instruction.  No,
+unfortunately there is no lli, load lower immediate.  We will learn in
+the next lesson how to load all 16 bits of a register with a desired
+constant.
 
+Why do we need to load immediate values into registers?  Registers are
+just like variables in a high level language, at some point before you
+use those variables you have to put something in them be it using
+constants or by reading from some input like reading from memory or
+a file or user.  If the variable is passed into the function then somewhere
+above that function there is ultimately a variable or variables that
+are loaded from somewhere before being used.
 
+A number of the instructions require that there are registers used as
+operands so before we can use one of those instructions we must load
+the operand registers with some value.
 
+The simulator is showing us each time a register is being writte with
+a value, you can see that the register writes both the register number
+and the value line up with the instructions in the program.
 
+---------------------------------------------------------------------
+Lesson 2: ADDI
 
+---- lesson2a.c
+#include "tinyasm.c"
+START("lesson2a.csv");
 
+    lui(r1,0x1200);
+    addi(r1,r1,0x0034);
+    lui(r1,0x5600);
+    addi(r1,r1,0x0078);
+    lui(r1,0x5640);
+    addi(r1,r1,0x0038);
+    halt();
 
+END
+---- lesson2a.c
 
+When building the csv file you should see
 
+do_addi limit fail pc = 3
 
+So change that line to
 
+---- lesson2b.c
+#include "tinyasm.c"
+START("lesson2b.csv");
 
+    lui(r1,0x1200);
+    addi(r1,r1,0x0034);
+    lui(r1,0x5600);
+    addi(r1,r1,0xFFF8);
+    lui(r1,0x5640);
+    addi(r1,r1,0x0038);
+    halt();
 
+END
+---- lesson2b.c
 
+When simulated the output is:
+[0x0000] 0x6448 lui r1,0x048 (0x1200)
+write_reg(r1,0x1200)
+[0x0001] 0x24B4 addi r1,r1,0x0034 (52)
+write_reg(r1,0x1234)
+[0x0002] 0x6558 lui r1,0x158 (0x5600)
+write_reg(r1,0x5600)
+[0x0003] 0x24F8 addi r1,r1,0xFFF8 (-8)
+write_reg(r1,0x55F8)
+[0x0004] 0x6559 lui r1,0x159 (0x5640)
+write_reg(r1,0x5640)
+[0x0005] 0x24B8 addi r1,r1,0x0038 (56)
+write_reg(r1,0x5678)
+[0x0006] 0xFFFF halt
+fetch_count 7
+write_count 0
+read_count 0
 
+What does it do?
 
+Well for starters you can see with the first two instructions I am
+placing the constant 0x1234 into r1.  We know that the lui instruction
+sets the upper 10 bits to match the immediate and lower 6 bits to zero
+(which also matches the immediate because the assembler complains
+otherwise).  So if we think about the addi description in the reference
+material above.  It adds the immediate value to the second register
+and stores the result in the first register.  So after the first lui
+where 0x1200 is in r1, now we are adding
+  r1=r1+0x0034
+which is
+  r1=0x1200+0x0034
+  r1=0x1234
+The constant we wanted in r1.
+
+Now why didnt that work with 0x5678, why did the assembler complain for
+starters?  A drawback to this tiny assembler is not being able to tell
+you a line number (I imagine there is some C magic you can use to get
+that to work) so it shows you the address in memory which is zero based
+so the first lui is address 0 the first addi is address 1 and so on, the
+offending addi is the addi(r1,r1,0x0078).  Why is that a problem?
+Well the syntax enforced by this assembler is that you must show the
+full sign extended constant.  Looking at the reference material for
+the addi instruction it is a 7 bit immediate (16 - 3 bits for opcode -
+3 bits for dest register - 3 bits for operand register = 7 bits left over).
+The constant 0x0078 is 0b0000000001111000 if you count them up 0b1111000
+is seven significant bits, so what is the problem?  This is a signed
+integer, if the 7th bit is set we must have all the bits above set, if
+the 7th bit is zero then all the upper bits must be zero.  For 0x0078
+we have the 7th bit set but the upper bits zero, that is wrong so we
+go ahead and sign extend right?  0b1111111111111000 = 0xFFF8 and try
+that.
+
+Well that gives 0x5600+0xFFF8 = 0x55F8, that is not the 0x5678 we were
+looking for.  But notice the third pair of instructions.  The constant
+0x0038 = 0b0000000000111000, the lower 7 bits are 0b0111000 and the upper
+bits match the 7th bit, so that is a valid constant.  If we look at
+0x5640 0b0101011001000000 the lower 6 bits are zero, so that is a valid
+lui constant.  And when we add 0x5640+0x0038 we get 0x5678, the desired
+16 bit value we wanted in r1.
+
+Although it would be nice to split constants on 8 bit boundaries
+
+0x1234 -> 0x1200+0x0034
+0x5678 -> 0x5600+0x0078
+0xABCD -> 0xAB00+0x00CD
+
+We really have to split them 10 on the left and 6 on the right
+
+0x1234 -> 0b0001001000110100 -> 0b0001001000 110100 -> 0x1200+0x0034
+0x5678 -> 0b0101011001111000 -> 0b0101011001 111000 -> 0x5640+0x0038
+0xABCD -> 0b1010101111001101 -> 0b1010101111 001101 -> 0xABC0+0x000D
+
+The left number so it is called here is the pattern used with lui and
+the right number the pattern used with the addi that follows.
+
+lui r1,0x1200
+addi r1,r1,0x0034
+lui r2,0x5640
+addi r2,r2,0x0038
+lui r3,0xABC0
+addi r3,r3,0x000D
 
 
 
