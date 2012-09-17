@@ -160,10 +160,16 @@ void do_lea ( unsigned int ra, unsigned int imm )
         do_addi(ra,0,imm&0x3F);
     }
 }
-
-
-
-
+void do_or ( unsigned int ra, unsigned int rb, unsigned int rc, unsigned int rd, unsigned int re )
+{
+    //c = a or b:
+    //d = b nand b
+    //e = c nand c
+    //a = d nand e
+    do_nand(rd,rb,rb);
+    do_nand(re,rc,rc);
+    do_nand(ra,rd,re);
+}
 
 #define add(ra,rb,rc)       do_add(ra,rb,rc)
 #define addi(ra,rb,simm)    do_addi(ra,rb,simm)
@@ -173,8 +179,13 @@ void do_lea ( unsigned int ra, unsigned int imm )
 #define lw(ra,rb,simm)      do_lw(ra,rb,simm)
 #define beq(ra,rb,simm)     do_beq(ra,rb,simm - 1 - __pc__)
 #define jalr(ra,rb)         do_jalr(ra,rb)
-#define lea(ra,imm)         do_lea(ra,imm)
 #define halt()              emit(0xFFFF);
+
+
+#define lea(ra,imm)         do_lea(ra,imm)
+#define or(ra,rb,rc,rd,re)  do_or(ra,rb,rc,rd,re)
+
+
 
 unsigned int r0 = 0, r1 = 1, r2 = 2, r3 = 3, r4 = 4, r5 = 5, r6 = 6, r7 = 7;
 

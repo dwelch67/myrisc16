@@ -667,7 +667,7 @@ be followed by that 32 bit immediate, 4 bytes.
 
 
 Why on earth would you have a nand instruction in a processor?  Dont
-moste have and instructions and not instructions separately?  Let's
+most have and instructions and not instructions separately?  Let's
 look at some truth tables:
 
 not c = not a
@@ -1077,7 +1077,7 @@ a value, you can see that the register writes both the register number
 and the value line up with the instructions in the program.
 
 ---------------------------------------------------------------------
-Lesson 2: ADDI
+Lesson 2: ADDI for immediates
 
 ---- lesson2a.c
 #include "tinyasm.c"
@@ -1198,6 +1198,501 @@ lui r3,0xABC0
 addi r3,r3,0x000D
 
 
+---------------------------------------------------------------------
+Lesson 3: ADDI for addition
+
+---- lesson3.c
+#include "tinyasm.c"
+START("lesson3.csv");
+
+    lui(r1,0x1200);
+    lui(r2,0x3400);
+    addi(r3,r1,0x0003);
+    addi(r3,r3,0x0004);
+    addi(r4,r2,0x0005);
+    addi(r5,r0,0x0006);
+    addi(r2,r2,0xFFFF);
+    addi(r6,r1,0xFFFE);
+    addi(r1,r1,0xFFFD);
+    halt();
+
+END
+---- lesson3.c
+
+When simulated the output is:
+
+[0x0000] 0x6448 lui r1,0x048 (0x1200)
+write_reg(r1,0x1200)
+[0x0001] 0x68D0 lui r2,0x0D0 (0x3400)
+write_reg(r2,0x3400)
+[0x0002] 0x2C83 addi r3,r1,0x0003 (3)
+write_reg(r3,0x1203)
+[0x0003] 0x2D84 addi r3,r3,0x0004 (4)
+write_reg(r3,0x1207)
+[0x0004] 0x3105 addi r4,r2,0x0005 (5)
+write_reg(r4,0x3405)
+[0x0005] 0x3406 addi r5,r0,0x0006 (6)
+write_reg(r5,0x0006)
+[0x0006] 0x297F addi r2,r2,0xFFFF (-1)
+write_reg(r2,0x33FF)
+[0x0007] 0x38FE addi r6,r1,0xFFFE (-2)
+write_reg(r6,0x11FE)
+[0x0008] 0x24FD addi r1,r1,0xFFFD (-3)
+write_reg(r1,0x11FD)
+[0x0009] 0xFFFF halt
+fetch_count 10
+write_count 0
+read_count 0
+
+What does it do?
+
+001aaabbbsssssss addi ra,rb,simm    ra = rb + simm
+
+addi ra,rb,simm means
+
+ra = rb + simm where ra and rb are registers and simm is a signed
+immediate.  The signed immediate is 7 bits which implies 0x00 to 0x7F
+but the most significant bit is sign extended which means that the
+possible range of values are 0x0000 to 0x003F and 0xFFC0 to 0xFFFF.
+Viewed as unsigned numbers that is 0 to 63 or 65417 to 65535, viewed
+as signed numbers 0 to 63 or -64 to -1.
+
+The example starts by using lui to put some values in a couple of registers
+we should not assume that the registers already have some value we need
+to put values in them before using them.
+
+the next line, the first addi is
+
+addi(r3,r1,0x0003);
+r3 = r1 + 0x0003 = 0x1200 + 0x0003 = 0x1203
+
+Next, there is no reason why you cant use the same register as both
+an operand and the resultP
+
+addi(r3,r3,0x0004);
+r3 = r3 + 0x0004 = 0x1203 + 0x0004 = 0x1207
+
+Next
+
+addi(r4,r2,0x0005);
+r4 = r2 + 0x0005 = 0x3400 + 0x0005 = 0x3405
+
+
+Note on this one that r0 is always zero when used as an operand.  So
+this is like moving the constant into r5 since adding anyting with 0 is
+itself.
+
+addi(r5,r0,0x0006);
+r5 = r0 + 0x0006 = 0x0000 + 0x0006 = 0x0006
+
+Now some negative numbers or large unsigned numbers
+
+addi(r2,r2,0xFFFF);
+r2 = r2 + 0xFFFF = 0x3400 + 0xFFFF = 0x33FF
+
+
+addi(r6,r1,0xFFFE);
+r6 = r1 + 0xFFFE = 0x1200 + 0xFFFE = 0x11FE
+
+addi(r1,r1,0xFFFD);
+r1 = r1 + 0xFFFD = 0x1200 + 0xFFFD = 0x11FD
+
+At this point it should be painfully obvious that this is like programming
+in any other language except there are limits on what you can do.  The
+registers are just like variables, this instruction limits you to a
+register = regsiter + constant and the constant has limits.  As far as
+how you use it though is like programming in any other language.
+
+
+---------------------------------------------------------------------
+Lesson 4: ADD
+
+---- lesson4.c
+#include "tinyasm.c"
+START("lesson4.csv");
+
+    lui(r1,0x1100);
+    lui(r2,0x2200);
+    lui(r3,0x3300);
+    addi(r3,r3,0x0033);
+    add(r4,r1,r2);
+    add(r5,r1,r3);
+    add(r6,r3,r1);
+    add(r7,r2,r5);
+    add(r1,r0,r0);
+    halt();
+
+END
+---- lesson4.c
+
+When simulated the output is:
+
+[0x0000] 0x6444 lui r1,0x044 (0x1100)
+write_reg(r1,0x1100)
+[0x0001] 0x6888 lui r2,0x088 (0x2200)
+write_reg(r2,0x2200)
+[0x0002] 0x6CCC lui r3,0x0CC (0x3300)
+write_reg(r3,0x3300)
+[0x0003] 0x2DB3 addi r3,r3,0x0033 (51)
+write_reg(r3,0x3333)
+[0x0004] 0x1082 add r4,r1,r2
+write_reg(r4,0x3300)
+[0x0005] 0x1483 add r5,r1,r3
+write_reg(r5,0x4433)
+[0x0006] 0x1981 add r6,r3,r1
+write_reg(r6,0x4433)
+[0x0007] 0x1D05 add r7,r2,r5
+write_reg(r7,0x6633)
+[0x0008] 0x0400 add r1,r0,r0
+write_reg(r1,0x0000)
+[0x0009] 0xFFFF halt
+fetch_count 10
+write_count 0
+read_count 0
+
+What does it do?
+
+Just like addi, think about programming in C or any other language
+the registers are like variables and this instruction limits you to
+a variable equals the sum of two variables.  So reading and understanding
+this code should be easy to see:
+
+    lui(r1,0x1100);
+
+r1 = 0x1100
+
+    lui(r2,0x2200);
+
+r2 = 0x2200
+
+    lui(r3,0x3300);
+
+r3 = 0x3300
+
+    addi(r3,r3,0x0033);
+
+r3 = r3 + 0x0033 = 0x3300 + 0x0033 = 0x3333
+
+    add(r4,r1,r2);
+
+r4 = r1 + r2 = 0x1100 + 0x2200 = 0x3300
+
+    add(r5,r1,r3);
+
+r5 = r1 + r3 = 0x1100 + 0x3333 = 0x4433
+
+    add(r6,r3,r1);
+
+r6 = r3 + r1 = 0x3333 + 0x1100 = 0x4433
+
+    add(r7,r2,r5);
+
+r7 = r2 + r5 = 0x2200 + 0x4433 = 0x6633
+
+    add(r1,r0,r0);
+
+r1 = r0 + r0 = 0x0000 + 0x0000 = 0x0000
+
+    halt();
+
+
+
+---------------------------------------------------------------------
+Lesson 5: NAND
+
+---- lesson5.c
+#include "tinyasm.c"
+START("lesson5.csv");
+
+    lui(r1,0x1100);
+    addi(r1,r1,0x0011);
+    nand(r1,r1,r1);
+    nand(r1,r1,r1);
+    addi(r2,r0,0x003F);
+    nand(r3,r1,r2);
+    nand(r3,r3,r3);
+    nand(r4,r0,r0);
+    lui(r2,0x2300);
+    nand(r3,r2,r4);
+    nand(r5,r2,r3);
+    nand(r6,r4,r3);
+    nand(r7,r5,r6);
+    addi(r2,r2,0x0004);
+    nand(r3,r1,r1);
+    nand(r4,r2,r2);
+    nand(r5,r3,r4);
+    halt();
+
+END
+---- lesson5.c
+
+When simulated the output is:
+
+[0x0000] 0x6444 lui r1,0x044 (0x1100)
+write_reg(r1,0x1100)
+[0x0001] 0x2491 addi r1,r1,0x0011 (17)
+write_reg(r1,0x1111)
+[0x0002] 0x4481 nand r1,r1,r1
+write_reg(r1,0xEEEE)
+[0x0003] 0x4481 nand r1,r1,r1
+write_reg(r1,0x1111)
+[0x0004] 0x283F addi r2,r0,0x003F (63)
+write_reg(r2,0x003F)
+[0x0005] 0x4C82 nand r3,r1,r2
+write_reg(r3,0xFFEE)
+[0x0006] 0x4D83 nand r3,r3,r3
+write_reg(r3,0x0011)
+[0x0007] 0x5000 nand r4,r0,r0
+write_reg(r4,0xFFFF)
+[0x0008] 0x688C lui r2,0x08C (0x2300)
+write_reg(r2,0x2300)
+[0x0009] 0x4D04 nand r3,r2,r4
+write_reg(r3,0xDCFF)
+[0x000A] 0x5503 nand r5,r2,r3
+write_reg(r5,0xFFFF)
+[0x000B] 0x5A03 nand r6,r4,r3
+write_reg(r6,0x2300)
+[0x000C] 0x5E86 nand r7,r5,r6
+write_reg(r7,0xDCFF)
+[0x000D] 0x2904 addi r2,r2,0x0004 (4)
+write_reg(r2,0x2304)
+[0x000E] 0x4C81 nand r3,r1,r1
+write_reg(r3,0xEEEE)
+[0x000F] 0x5102 nand r4,r2,r2
+write_reg(r4,0xDCFB)
+[0x0010] 0x5584 nand r5,r3,r4
+write_reg(r5,0x3315)
+[0x0011] 0xFFFF halt
+fetch_count 18
+write_count 0
+read_count 0
+
+What does it do?
+
+010aaabbb0000ccc nand ra,rb,rc      ra = ~(rb&rc)
+
+Maybe you are asking yourself what is up with this weird instruction?
+Make up your mind AND or NOT, but both?  Well what you may or may not
+know is that if you have a NOR or a NAND you can build all of the other
+logical operations AND, NOT, OR, XOR.  The reference material above
+describes how this is done using truth tables.
+
+Knowing from the description that the nand instruction performs the
+operation ra = ~(rb&rc), at this point you should have no problem
+reading this code.  After that we will look at what it actually does.
+
+    lui(r1,0x1100);
+
+r1 = 0x1100
+
+    addi(r1,r1,0x0011);
+
+r1 = r1 + 0x0011 = 0x1100 + 0x0011 = 0x1111
+
+    nand(r1,r1,r1);
+
+r1 = ~(r1&r1) = ~(0x1111&0x1111) = ~(0x1111) = 0xEEEE
+
+    nand(r1,r1,r1);
+
+r1 = ~(r1&r1) = ~(0xEEEE&0xEEEE) = ~(0xEEEE) = 0x1111
+
+    addi(r2,r0,0x003F);
+
+r2 = r0 + 0x003F = 0x0000 + 0x003F = 0x003F
+
+    nand(r3,r1,r2);
+
+r3 = ~(r1&r2) = ~(0x1111&0x003F) = ~(0x0011) = 0xFFEE
+
+    nand(r3,r3,r3);
+
+r3 = ~(r3&r3) = ~(0xFFEE&0xFFEE) = ~(0xFFEE) = 0x0011
+
+    nand(r4,r0,r0);
+
+r4 = ~(r0&r0) = ~(0x0000&0x0000) = ~(0x0000) = 0xFFFF
+
+    lui(r2,0x2300);
+
+r2 = 0x2300
+
+    nand(r3,r2,r4);
+
+r3 = ~(r2&r4) = ~(0x2300&0xFFFF) = ~(0x2300) = 0xDCFF
+
+    nand(r5,r2,r3);
+
+r5 = ~(r2&r3) = ~(0x2300&0x0011) = ~(0x0000) = 0xFFFF
+
+    nand(r6,r4,r3);
+
+r6 = ~(r4&r3) = ~(0xFFFF&0xDCFF) = ~(0xDCFF) = 0x2300
+
+    nand(r7,r5,r6);
+
+r7 = ~(r5&r6) = ~(0xFFFF&0x2300) = ~(0x2300) = 0xDCFF
+
+    addi(r2,r2,0x0004);
+
+r2 = r2 + 0x0004 = 0x2300 + 0x0004 = 0x2304
+
+    nand(r3,r1,r1);
+
+r3 = ~(r1&r1) = ~(0x1111&0x1111) = ~(0x1111) = 0xEEEE
+
+    nand(r4,r2,r2);
+
+r4 = ~(r2&r2) = ~(0x2304&0x2304) = ~(0x2304) = 0xDCFB
+
+    nand(r5,r3,r4);
+
+r5 = ~(r3&r4) = ~(0xEEEE&0xDCFB) = ~(0xCCEA) = 0x3315
+
+    halt();
+
+
+So what kinds of things did we just see?  The most obvious is  a simple
+not operation, if the two operands are the same register then we know
+that anding somthing with itself is itself.  So then you take the bitwise
+not of that and you get the bitwise not, of the input register.
+
+    nand(r1,r1,r1);
+
+r1 = ~(r1&r1) = ~(0x1111&0x1111) = ~(0x1111) = 0xEEEE
+
+NOT(0x1111) = 0xEEEE
+
+The next thing was a simple and
+
+    nand(r3,r1,r2);
+
+r3 = ~(r1&r2) = ~(0x1111&0x003F) = ~(0x0011) = 0xFFEE
+
+    nand(r3,r3,r3);
+
+r3 = ~(r3&r3) = ~(0xFFEE&0xFFEE) = ~(0xFFEE) = 0x0011
+
+The first nand you and the two operands but your result is inverted, so
+then you nand the result if the first operatin against itself and that
+is a not.  The net result is an AND operation 0x1111 & 0x003F = 0x0011
+
+From the reference material above we know that an xor operation, a xor b
+can be computed using this sequence of nand operations, where d, e, and f
+are temporary variables.
+
+d = a nand b
+e = a nand d
+f = b nand d
+c = e nand f
+
+    nand(r3,r2,r4);
+
+r3 = ~(r2&r4) = ~(0x2300&0xFFFF) = ~(0x2300) = 0xDCFF
+
+    nand(r5,r2,r3);
+
+r5 = ~(r2&r3) = ~(0x2300&0x0011) = ~(0x0000) = 0xFFFF
+
+    nand(r6,r4,r3);
+
+r6 = ~(r4&r3) = ~(0xFFFF&0xDCFF) = ~(0xDCFF) = 0x2300
+
+    nand(r7,r5,r6);
+
+r7 = ~(r5&r6) = ~(0xFFFF&0x2300) = ~(0x2300) = 0xDCFF
+
+The net result is r2 xor r4, 0x2300 xor 0xFFFF = 0xDCFF
+
+From the reference material above we also know that a or b can be
+implemented using these instructions, where d and e are temporary
+variables
+
+d = a nand a
+e = b nand b
+c = d nand e
+
+    nand(r3,r1,r1);
+
+r3 = ~(r1&r1) = ~(0x1111&0x1111) = ~(0x1111) = 0xEEEE
+
+    nand(r4,r2,r2);
+
+r4 = ~(r2&r2) = ~(0x2304&0x2304) = ~(0x2304) = 0xDCFB
+
+    nand(r5,r3,r4);
+
+r5 = ~(r3&r4) = ~(0xEEEE&0xDCFB) = ~(0xCCEA) = 0x3315
+
+r1 or r2 = 0x1111 or 0x2304 = 0x3315
+
+
+---------------------------------------------------------------------
+Lesson 6: pseudo instruciton OR
+
+---- lesson6.c
+#include "tinyasm.c"
+START("lesson6.csv");
+
+    lui(r1,0x1100);
+    addi(r1,r1,0x0011);
+    lui(r2,0x2300);
+    addi(r2,r2,0x0004);
+    or(r5,r1,r2,r3,r4);
+    halt();
+END
+---- lesson6.c
+
+When simulated the output is:
+
+[0x0000] 0x6444 lui r1,0x044 (0x1100)
+write_reg(r1,0x1100)
+[0x0001] 0x2491 addi r1,r1,0x0011 (17)
+write_reg(r1,0x1111)
+[0x0002] 0x688C lui r2,0x08C (0x2300)
+write_reg(r2,0x2300)
+[0x0003] 0x2904 addi r2,r2,0x0004 (4)
+write_reg(r2,0x2304)
+[0x0004] 0x4C81 nand r3,r1,r1
+write_reg(r3,0xEEEE)
+[0x0005] 0x5102 nand r4,r2,r2
+write_reg(r4,0xDCFB)
+[0x0006] 0x5584 nand r5,r3,r4
+write_reg(r5,0x3315)
+[0x0007] 0xFFFF halt
+fetch_count 8
+write_count 0
+read_count 0
+
+What does it do?
+
+From lesson 5 and the reference material we learned that the operation
+c = a or b can be computing using nand and two spare registers:
+
+    d = b nand b
+    e = c nand c
+    a = d nand e
+
+This interesting tiny assembler we are using makes it very easy to create
+pseudo instructions.  Instructions with a different name or function
+or syntax, that can be implemented using one or more other instructions.
+
+Examine tinyasm.c and you will see:
+
+void do_or ( unsigned int ra, unsigned int rb, unsigned int rc, unsigned int rd, unsigned int re )
+{
+    //c = a or b:
+    //d = b nand b
+    //e = c nand c
+    //a = d nand e
+    do_nand(rd,rb,rb);
+    do_nand(re,rc,rc);
+    do_nand(ra,rd,re);
+}
+...
+#define or(ra,rb,rc,rd,re)  do_or(ra,rb,rc,rd,re)
+
+You should try making your own pseudo instructions.  AND, NOT, XOR.
 
 
 
@@ -1213,13 +1708,25 @@ addi r3,r3,0x000D
 
 
 
+
+
+
+000aaabbb0000ccc add ra,rb,rc       ra = rb + rc
+001aaabbbsssssss addi ra,rb,simm    ra = rb + simm
+010aaabbb0000ccc nand ra,rb,rc      ra = ~(rb&rc)
+011aaaiiiiiiiiii lui ra,imm         ra=imm<<6
+100aaabbbsssssss sw ra,[rb+simm]
+101aaabbbsssssss lw ra,[rb+simm]
+110aaabbbsssssss beq ra,rb,simm
+111aaabbb0000000 jalr ra,rb         ra = pc; j [rb]
+1111111111111111 halt
 
 
 
 building an instruction set simulator
 
 
-at look at and simulating logic
+look at and simulating logic
 
 
 
