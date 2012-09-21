@@ -1696,8 +1696,127 @@ You should try making your own pseudo instructions.  AND, NOT, XOR.
 
 
 
+---------------------------------------------------------------------
+Lesson 7: BEQ
 
+---- lesson7.c
+#include "tinyasm.c"
+START("lesson7.csv");
 
+declare(loop_top);
+declare(loop_done);
+
+    addi(r1,r0,0x0005);
+    addi(r2,r0,0x0000);
+label(loop_top);
+    addi(r2,r2,0x0001);
+    beq(r2,r1,loop_done);
+    beq(r0,r0,loop_top);
+label(loop_done);
+    halt();
+
+END
+---- lesson7.c
+
+When simulated the output is:
+
+[0x0000] 0x2405 addi r1,r0,0x0005 (5)
+write_reg(r1,0x0005)
+[0x0001] 0x2800 addi r2,r0,0x0000 (0)
+write_reg(r2,0x0000)
+[0x0002] 0x2901 addi r2,r2,0x0001 (1)
+write_reg(r2,0x0001)
+[0x0003] 0xC881 beq r2,r1,0x0005 (0x0001 0x0005)
+[0x0004] 0xC07D beq r0,r0,0x0002 (0x0000 0x0000)
+[0x0002] 0x2901 addi r2,r2,0x0001 (1)
+write_reg(r2,0x0002)
+[0x0003] 0xC881 beq r2,r1,0x0005 (0x0002 0x0005)
+[0x0004] 0xC07D beq r0,r0,0x0002 (0x0000 0x0000)
+[0x0002] 0x2901 addi r2,r2,0x0001 (1)
+write_reg(r2,0x0003)
+[0x0003] 0xC881 beq r2,r1,0x0005 (0x0003 0x0005)
+[0x0004] 0xC07D beq r0,r0,0x0002 (0x0000 0x0000)
+[0x0002] 0x2901 addi r2,r2,0x0001 (1)
+write_reg(r2,0x0004)
+[0x0003] 0xC881 beq r2,r1,0x0005 (0x0004 0x0005)
+[0x0004] 0xC07D beq r0,r0,0x0002 (0x0000 0x0000)
+[0x0002] 0x2901 addi r2,r2,0x0001 (1)
+write_reg(r2,0x0005)
+[0x0003] 0xC881 beq r2,r1,0x0005 (0x0005 0x0005)
+[0x0005] 0xFFFF halt
+fetch_count 17
+write_count 0
+read_count 0
+
+What does it do?
+
+If you are familiar with processors that use flags like the z flag means
+equal or c flag means carry.  We dont have flags here, not for conditional
+branches.  We have a branch if equal instruction which includes the
+operands to be compared.  It does it all in one instruction, good, bad
+or otherwise.
+
+110aaabbbsssssss beq ra,rb,simm
+
+If the contents of regsters ra and rb are equal then the program counter
+is modified as such pc = (pc+1) + simm, where pc is the address of the
+beq instruction in question.
+
+Normally you dont encode the offset yourself in a branch instruction
+you let the assembler compute it for you and you use labels.  This
+tiny assembler language is a little strange in the use of labels.
+In a normal C program you would just put the label:
+
+    unsigned int ra;
+    unsigned int rb;
+
+    ra=5;
+    rb=0;
+loop_top:
+    rb=rb+1;
+    if(rb==ra) goto loop_done;
+    goto loop_top:
+loop_done:
+    ...
+
+And using a normal assembler you would pretty much do the same thing.  With
+this tiny assembler C thing at some point before you use the lable
+you declare it.
+
+declare(loop_top);
+
+Then at the place in the code where you want the label you put the label
+
+label(loop_top);
+
+This program does what the C code does above.  We start by loading a
+5 into register r1, and then a 0 into register r2.  We add 1 to r2
+then compare and branch if equal r1 and r2.  So when r2 counts
+to 5 r1 and r2 will be equal and the branch will happen.  Otherwise
+you dont take that branch and you look at the next branch instruction.
+The second beq instruction, compares r0 and r0, it doesnt matter
+that it is r0, any register compared with itself is going to have the
+same value so the result here is always an equal so it always branches.
+Another term for this is an unconditional branch.  So if r1 equals r2
+then we skip over the unconditial branch otherwise we perform the
+unconditial branch, which leads us back to adding 1 to r2, eventually
+r2 will be a 5 and they are equal and we branch out of the loop.
+
+Normally a processor will have a number of conditional branch instructions
+branch if equal, branch if not equal, branch if greater than, etc. Because
+this instruction set is so greatly reduced there is only one conditional
+branch.  You can already see with the pair of beq instructions and
+a label you can create what is essentially a branch if not equal.
+
+    unsigned int ra;
+    unsigned int rb;
+
+    ra=5;
+    rb=0;
+loop_top:
+    rb=rb+1;
+    if(rb!=ra) goto loop_top;
+    ...
 
 
 
