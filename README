@@ -1822,6 +1822,115 @@ loop_top:
 
 
 
+---------------------------------------------------------------------
+Lesson 8: Load and store
+
+---- lesson8.c
+#include "tinyasm.c"
+START("lesson8.csv");
+
+declare(loop_top);
+declare(loop_done);
+
+    lui(r1,0x1100);
+    addi(r1,r1,0x0011);
+    lui(r2,0x2200);
+    addi(r2,r2,0x0022);
+    lui(r3,0x0100);
+label(loop_top);
+    sw(r1,r3,0x0000);
+    sw(r2,r3,0x0002);
+    lw(r4,r3,0x0000);
+    lw(r4,r3,0x0002);
+    addi(r3,r3,0x0002);
+    lw(r4,r3,0x0000);
+    lw(r4,r3,0xFFFE);
+    halt();
+END
+---- lesson8.c
+
+When simulated the output is:
+[0x0000] 0x6444 lui r1,0x044 (0x1100)
+write_reg(r1,0x1100)
+[0x0001] 0x2491 addi r1,r1,0x0011 (17)
+write_reg(r1,0x1111)
+[0x0002] 0x6888 lui r2,0x088 (0x2200)
+write_reg(r2,0x2200)
+[0x0003] 0x2922 addi r2,r2,0x0022 (34)
+write_reg(r2,0x2222)
+[0x0004] 0x6C04 lui r3,0x004 (0x0100)
+write_reg(r3,0x0100)
+[0x0005] 0x8580 sw r1,[r3+0] ([0x0100]<=0x1111)
+[0x0006] 0x8982 sw r2,[r3+2] ([0x0102]<=0x2222)
+[0x0007] 0xB180 lw r4,[r3+0] ([0x0100]=>0x1111)
+write_reg(r4,0x1111)
+[0x0008] 0xB182 lw r4,[r3+2] ([0x0102]=>0x2222)
+write_reg(r4,0x2222)
+[0x0009] 0x2D82 addi r3,r3,0x0002 (2)
+write_reg(r3,0x0102)
+[0x000A] 0xB180 lw r4,[r3+0] ([0x0102]=>0x2222)
+write_reg(r4,0x2222)
+[0x000B] 0xB1FE lw r4,[r3-2] ([0x0100]=>0x1111)
+write_reg(r4,0x1111)
+[0x000C] 0xFFFF halt
+fetch_count 13
+write_count 2
+read_count 0
+
+What does it do?
+
+The sw and lw instructions are used for writing (store word) and reading
+(read word) stuff to and from memory space.  I say memory space instead
+of memory because often the memory space or memory bus is used to
+access peripherals as well as actual memory.  Some addresses may be
+the control registers for a uart, or usb controller or hard disk or video
+or something like that.  And the rest of the addresses are general purpose
+memory that we can write and read when we run out of registers to keep
+important items in.  The example above assumes that address 0x100 and
+0x102 are general purpose memory.
+
+You should already understand how r1 gets the value 0x1111 and r2 0x2222
+and r3 0x100 (Before going into the first sw and lw instructions.
+From the instruction referece we see that this uses a signed immediate
+just like the addi instruction.  So we know what our range of valid
+signed immedites is for this instruction.
+100aaabbbsssssss sw ra,[rb+simm]
+101aaabbbsssssss lw ra,[rb+simm]
+The signed immediate is added to the contents of the rb register creating
+an address.  A memory bus operation happens on that address, either
+a write or read depending on the instruction.  If it is a write the
+value in register ra is written to that memory address.  If it is a
+read then whatever is read back from that address on the memory bus
+is stored in register ra.
+
+The example demonstrates writing 0x1111 to address 0x0100 then writes
+0x2222 to address 0x0102.  Then it reads from 0x0100, since we have
+not done anything to modify since the prior write, address 0x0100
+contains the value 0x1111 that was written to it.  Likewise reading
+from 0x0102 gives 0x2222.  Offsets are used to get at address 0x0102.
+
+Adding 2 to r3 leaves 0x0102 in r3.  We demonstrate this by using the
+newly modified r3 to read from memory resulting in 0x2222.  A signed
+integer is allowed as an offset to the specified register for
+addressing memory.  Adding 0xFFFE is the same as subtracting 0x0002
+so in theory 0x0102 - 2 = 0x0100, and reading from that address does
+indeed return 0x1111.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

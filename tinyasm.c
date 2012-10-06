@@ -101,19 +101,52 @@ void do_lui ( unsigned int ra, unsigned int imm )
 }
 void do_sw ( unsigned int ra, unsigned int rb, int simm )
 {
-    if((ra>7)||(rb>7)||(simm>63)||(simm<-64))
+    if((ra>7)||(rb>7))
     {
         printf("do_sw limit fail pc = %u \n",__pc__);
         exit(1);
     }
+    if(simm&0x0040)
+    {
+        if((simm&0xFFC0)!=0xFFC0)
+        {
+            printf("do_sw limit fail pc = %u \n",__pc__);
+            exit(1);
+        }
+    }
+    else
+    {
+        if((simm&0xFFC0)!=0x0000)
+        {
+            printf("do_sw limit fail pc = %u \n",__pc__);
+            exit(1);
+        }
+    }
+
     emit((4<<13)|(ra<<10)|(rb<<7)|(simm&0x7F));
 }
 void do_lw ( unsigned int ra, unsigned int rb, int simm )
 {
-    if((ra>7)||(rb>7)||(simm>63)||(simm<-64))
+    if((ra>7)||(rb>7))
     {
         printf("do_lw limit fail pc = %u \n",__pc__);
         exit(1);
+    }
+    if(simm&0x0040)
+    {
+        if((simm&0xFFC0)!=0xFFC0)
+        {
+            printf("do_lw limit fail pc = %u \n",__pc__);
+            exit(1);
+        }
+    }
+    else
+    {
+        if((simm&0xFFC0)!=0x0000)
+        {
+            printf("do_lw limit fail pc = %u \n",__pc__);
+            exit(1);
+        }
     }
     emit((5<<13)|(ra<<10)|(rb<<7)|(simm&0x7F));
 }

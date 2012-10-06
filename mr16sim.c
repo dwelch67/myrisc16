@@ -74,7 +74,7 @@ void write_reg ( unsigned char r, unsigned short data )
     }
 }
 //-------------------------------------------------------------------
-unsigned short read_mem ( unsigned char addr )
+unsigned short read_mem ( unsigned short addr )
 {
     unsigned short data;
 
@@ -174,7 +174,7 @@ int sim_one ( void )
         {
             data=reg[ra];
             addr=reg[rb]+simm;
-            if(show_diss) printf("[0x%04X] 0x%04X sw r%u,[r%u%-d] ([0x%04X]<=0x%04X) \n",pc-1,inst,ra,rb,simm,addr,data);
+            if(show_diss) printf("[0x%04X] 0x%04X sw r%u,[r%u%+d] ([0x%04X]<=0x%04X) \n",pc-1,inst,ra,rb,((short)simm),addr,data);
             data=read_reg(ra);
             addr=read_reg(rb)+simm;
             write_mem(addr,data);
@@ -184,7 +184,7 @@ int sim_one ( void )
         {
             addr=reg[rb]+simm;
             data=mem[addr];
-            if(show_diss) printf("[0x%04X] 0x%04X lw r%u,[r%u%-d] ([0x%04X]=>0x%04X) \n",pc-1,inst,ra,rb,simm,addr,data);
+            if(show_diss) printf("[0x%04X] 0x%04X lw r%u,[r%u%+d] ([0x%04X]=>0x%04X) \n",pc-1,inst,ra,rb,((short)simm),addr,data);
             addr=read_reg(rb)+simm;
             data=read_mem(addr);
             write_reg(ra,data);

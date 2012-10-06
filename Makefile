@@ -1,6 +1,16 @@
 
 
-all :  mr16sim.exe loop1.csv loop2.csv
+all :  mr16sim.exe lesson0.csv lesson.csv loop1.csv loop2.csv
+
+lesson0.csv : lesson0.c
+	gcc lesson0.c -o lesson0.exe
+	./lesson0.exe
+
+
+
+lesson.csv : lesson.c
+	gcc lesson.c -o lesson.exe
+	./lesson.exe
 
 
 loop1.csv : loop1.c
